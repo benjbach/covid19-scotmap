@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<script src="https://d3js.org/d3.v5.min.js"></script>
+	<script src="https://d3js.org/d3-array.v2.min.js"></script>
+	<script src="https://d3js.org/d3-color.v1.min.js"></script>
+	<script src="https://d3js.org/d3-format.v1.min.js"></script>
+	<script src="https://d3js.org/d3-interpolate.v1.min.js"></script>
+	<script src="https://d3js.org/d3-time.v1.min.js"></script>
+	<script src="https://d3js.org/d3-time-format.v2.min.js"></script>
+	<script src="https://d3js.org/d3-scale.v3.min.js"></script>
+	<script src = "https://d3js.org/d3-path.v1.min.js"></script>
+	<script src="https://d3js.org/d3-selection-multi.v1.min.js"></script>
+	<script src="lib/moment.js"></script>
+	<link href="https://fonts.googleapis.com/css?family=Poppins&display=swap" rel="stylesheet">
+	<meta charset="UTF-8">
+	<style>
+		body{
+			font-family: 'Poppins', 'Helvetica', sans serif;
+		}
+		.barCulmulativeCases{
+			fill: #000;
+			stroke: none;
+		}
+		.barCulmulativeCases.tickmark{
+			fill: #888;
+		}
+		.barNewCases{			
+			fill: #f00;
+		}
+		.barNewCasesTotal{
+			fill: #f00;
+		}
+		.mouseover{
+			fill: #f00;
+		}
+		.mouseover-linked{
+			fill: #f00;
+		}
+		.chartBackground{
+			fill: #eee;
+		}
+		.regionLabel{
+			font-size: 8pt;
+			font-weight: 100;
+			fill: #777;
+		}
+		.valueLabel{
+			font-size: 10pt;			
+			text-anchor: end;
+		}
+		.valueLabelBackground{
+			fill: #fff;
+			opacity: 1;
+		}
+	</style>
+</head>
+<body>
+	<h2>All of Scotland</h2>
+	<svg id="svg-total-scotland"></svg>
+	<script  type="text/javascript" src="total.js"></script>
+</body>
+</html>

@@ -31,9 +31,6 @@ var HEIGHT_SVG = 600;
 var WIDTH_CHART = 100;
 var HEIGHT_CHART = 70;
 
-var WIDTH_TOTALCHART = 300;
-var HEIGHT_TOTALCHART = 200;
-
 // layout
 const WIDTH_LAYOUT = 3;
 const WIDTH_HEIGHT = 7;
@@ -126,7 +123,7 @@ d3.csv('data/'+FILE+'.csv').then(function(data)
 	console.log("daily By board =", cumulativeCasesByBoard)
 	console.log("---> data parsed")
 
-	createCharts();
+	initCharts();
 	setData(cumulativeCasesByBoard)
 })
 
@@ -145,8 +142,7 @@ var labelBackground
 var label
 
 
-function createCharts(){
-
+function initCharts(){
 
 	// Create bar chart for each region
 	svg = d3.select("#svg-mapvis")
