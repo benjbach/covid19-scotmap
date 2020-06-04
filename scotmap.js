@@ -8,71 +8,90 @@ var TOTAL = 15
 
 // REGIONS
 var regions = [
-	"Ayrshire & Arran",
-	"Borders",
-	"Dumfries & Galloway",
-	"Fife",
-	"Forth Valley",
-	"Grampian",
-	"Greater Glasgow & Clyde",
-	"Highland",
-	"Lanarkshire",
-	"Lothian",
-	"Orkney",
-	"Shetland",
-	"Tayside",
-	"Western Isles"]
+	"NHS Ayrshire & Arran",
+	"NHS Borders",
+	"NHS Dumfries & Galloway",
+	"NHS Fife",
+	"NHS Forth Valley",
+	"NHS Grampian",
+	"NHS Greater Glasgow & Clyde",
+	"NHS Highland",
+	"NHS Lanarkshire",
+	"NHS Lothian",
+	"NHS Orkney",
+	"NHS Shetland",
+	"NHS Tayside",
+	"NHS Western Isles"]
 var dates = [];
 var totals = [];
 
-var WIDTH_SVG = 900
-var HEIGHT_SVG = 900;
+var WIDTH_SVG = 600
+var HEIGHT_SVG = 600;
 
-var WIDTH_CHART = 200;
-var HEIGHT_CHART = 100;
+var WIDTH_CHART = 100;
+var HEIGHT_CHART = 70;
+
+var WIDTH_TOTALCHART = 300;
+var HEIGHT_TOTALCHART = 200;
 
 // layout
 const WIDTH_LAYOUT = 3;
 const WIDTH_HEIGHT = 7;
 const GAP_LAYOUT = 10;	
 layout = {
-	'Ayrshire & Arran': [5,1],
-	'Borders': [6,3],
-	'Dumfries & Galloway': [6,1],
-	'Fife': [4,2],
-	'Forth Valley': [4,1],
-	'Grampian': [3,2],
-	'Greater Glasgow & Clyde': [5,2],
-	'Highland': [2,1],
-	'Lanarkshire': [6,2],
-	'Lothian': [5,3],
-	'Orkney': [1,2],
-	'Shetland': [0,2],
-	'Tayside': [3,1],
-	'Western Isles': [2,0]
+	'NHS Ayrshire & Arran': [5,1],
+	'NHS Borders': [6,3],
+	'NHS Dumfries & Galloway': [6,1],
+	'NHS Fife': [4,2],
+	'NHS Forth Valley': [4,1],
+	'NHS Grampian': [3,2],
+	'NHS Greater Glasgow & Clyde': [5,2],
+	'NHS Highland': [2,1],
+	'NHS Lanarkshire': [6,2],
+	'NHS Lothian': [5,3],
+	'NHS Orkney': [1,2],
+	'NHS Shetland': [0,2],
+	'NHS Tayside': [3,1],
+	'NHS Western Isles': [2,0]
 }
 
 function getLayoutX(regionName){
-	regionName = regionName.replace('NHS ','')
 	return layout[regionName][1] * (WIDTH_CHART + GAP_LAYOUT);
 }
 function getLayoutY(regionName){
 	return layout[regionName][0] * (HEIGHT_CHART + GAP_LAYOUT);
 }
 
+var totalMax = 0
+var regionMax = 0
+var cumulativeCasesByBoard = {}
+var dailyCasesByBoard = {}
+
+const buttons = d3.selectAll('input[name="input-boardData"]');
+buttons.on('change', function(d) {
+	changeData(this.value)
+});
+
+function changeData(value){
+	console.log('new data: '+ value);
+
+	if(value === 'culmulativeCases'){
+		setData(cumulativeCasesByBoard)
+	}
+	else if(value === 'newCases'){
+		setData(dailyCasesByBoard)		
+	}
+}
 
 d3.csv('data/'+FILE+'.csv').then(function(data) 
 { 
-
-	var totalMax = 0
-	var regionMax = 0
-
-	// CREATE SMALL LINE CHART PER REGION
-	var values = {}
+	// PARSE SOME DATA
 	for (var i = 0; i < regions.length; i++) {
-		values[regions[i]] = [];
+		cumulativeCasesByBoard[regions[i]] = [];
+		dailyCasesByBoard[regions[i]] = [];
 	}
 	var row;
+	var prevRow;
 	for (var i = 0; i < data.length; i++) {
 		row = data[i]
 		for(var key in row){
@@ -80,31 +99,64 @@ d3.csv('data/'+FILE+'.csv').then(function(data)
 				dates.push(moment(row[key], DATE_FORMAT_INPUT))
 			}else 
 			if (key == "Scotland"){
-				totals.push(row[key])
-				totalMax = Math.max(totalMax, row[key])
+				var val = cleanValue(row[key])
+				totals.push(val)
+				totalMax = Math.max(totalMax, val)
 			}else{
-				var vals = cleanValue(row[key])
-				key = key.replace('NHS ','')
-				values[key].push(vals)
-				regionMax = Math.max(regionMax, vals)
+				var val = cleanValue(row[key])
+			
+				// culmulative cases
+				cumulativeCasesByBoard[key].push(val)
+				regionMax = Math.max(regionMax, val)
+
+				// daily cases
+				var diff = 0;
+				if(prevRow){
+					diff = cleanValue(row[key]) - cleanValue(prevRow[key]);
+					diff = Math.max(diff, 0)
+				}
+				dailyCasesByBoard[key].push(diff)
 			}
 		}
+		prevRow = row;
 	}
 	console.log("Dates =", dates)
 	console.log("Total cases =", totals)
-	console.log("By region =", values)
+	console.log("culmulative by board =", cumulativeCasesByBoard)
+	console.log("daily By board =", cumulativeCasesByBoard)
+	console.log("---> data parsed")
+
+	createCharts();
+	setData(cumulativeCasesByBoard)
+})
+
+
+var chart
+var bar
+var barHeight = d3.scaleLinear()
+	.range([0, HEIGHT_CHART-20]);
+var barXPos = d3.scaleLinear()
+	.range([0, WIDTH_CHART]);
+
+var xStep = WIDTH_CHART / dates.length;
+var svg;
+
+var labelBackground
+var label
+
+
+function createCharts(){
 
 
 	// Create bar chart for each region
-	var svg = d3.select("#svg-mapvis")
+	svg = d3.select("#svg-mapvis")
 	    .attr("width", WIDTH_SVG)
 	    .attr("height", HEIGHT_SVG);
 
-	var chart = svg.selectAll('g')
-	    .data(d3.entries(values))
+	chart = svg.selectAll('g')
+	    .data(d3.entries(cumulativeCasesByBoard))
 	  	.enter().append('g')
 	    	.attr("transform", function(d, i) { 
-	    		// console.log('print', i, d)
 	    		return "translate("+getLayoutX(d.key)+"," + getLayoutY(d.key) + ")"; 
 	    	})
 	    	.attr('height', HEIGHT_CHART)
@@ -128,48 +180,27 @@ d3.csv('data/'+FILE+'.csv').then(function(data)
 
 
 	// Tooltip on mouse over	    	
-	var labelBackground = svg.append('rect')
+	labelBackground = svg.append('rect')
 		.attr('visibility', 'hidden')
 		.attr('class', 'valueLabelBackground')
 		.attr('height', 16)
-	var label = svg.append("text")
+	label = svg.append("text")
 		.attr('visibility', 'hidden')
 		.attr('class', 'valueLabel')
 
-    // Draw bars
-	var xStep = WIDTH_CHART / dates.length;
-	console.log(xStep);
 
-	var barHeight = d3.scaleLinear()
-		.domain([0, regionMax])
-		.range([0, HEIGHT_CHART-20]);
-	var barXPos = d3.scaleLinear()
-		.domain([0, dates.length])
-		.range([0, WIDTH_CHART]);
-
-	// draw bars
-	var barCulmulativeCases = chart.selectAll('barCulmulativeCases')
+	bar = chart.selectAll('bar')
 		.data(function(d){
 			return d.value;
 		})
 		.enter().append('rect')
-			.attr('class','barCulmulativeCases')
+			.attr('class','bar')
 			.classed('tickmark', function(d,i){
 				return dates[i].date() == 1;
 			})
-			.attr('x', function(d,i){
-				return barXPos(i);
-			})
-			.attr('height',function(d,i){
-				return barHeight(d);
-			})
-			.attr('width', xStep)
-			.attr('y', function(d,i){
-				return HEIGHT_CHART - barHeight(d);
-			})
 			.on('mouseover',function(d,i){
-				d3.selectAll('.barCulmulativeCases').classed('mouseover', false)
-				barCulmulativeCases.classed('mouseover', function(d,j){
+				d3.selectAll('.bar').classed('mouseover', false)
+				bar.classed('mouseover', function(d,j){
 						return i == j;
 					})
 				var region = d3.select(this.parentNode).datum().key;
@@ -189,56 +220,46 @@ d3.csv('data/'+FILE+'.csv').then(function(data)
 				d3.select(this).classed('mouseover', false)
 				labelBackground.attr('visibility', 'hidden')
 				label.attr('visibility', 'hidden')
-			})	
+			})
 
-	var barNewCases = chart.selectAll('barNewCases')
-		.data(function(d){
+}
+
+function setData(values){
+	
+	// set new data for every chart and every bar
+	chart.data(d3.entries(values))
+	var max = 0
+	for (var key in values) {
+		for (var j = 0; j < values[key].length; j++) {
+			max = Math.max(max, values[key][j])
+		}
+	}
+	console.log(max)
+
+	barHeight.domain([0, max])
+	barXPos.domain([0, dates.length])
+
+	xStep = WIDTH_CHART / dates.length;
+	
+	// draw bars
+	bar.data(function(d){
 			return d.value;
 		})
-		.enter().append('rect')
-			.attr('class','barNewCases')
+			.attr('class','bar')
+			.classed('tickmark', function(d,i){
+				return dates[i].date() == 1;
+			})
 			.attr('x', function(d,i){
 				return barXPos(i);
 			})
-			.attr('height',function(d,i,all){
-				var diff = d3.selectAll(all).data()[i-1]
-				console.log(diff)
-				if(!diff)
-					diff = 0;
-				return barHeight(d - diff);
+			.attr('height',function(d,i){
+				return barHeight(d);
 			})
 			.attr('width', xStep)
-			.attr('y', function(d,i,all){
-				var val = d3.selectAll(all).data()[i-1]
-				if(!val)
-					val = 0;
-				return HEIGHT_CHART - barHeight(d - val) + 5;
+			.attr('y', function(d,i){
+				return HEIGHT_CHART - barHeight(d);
 			})
-			// .on('mouseover',function(d,i){
-			// 	d3.selectAll('.barCulmulativeCases').classed('mouseover', false)
-			// 	barCulmulativeCases.classed('mouseover', function(d,j){
-			// 			return i == j;
-			// 		})
-			// 	var region = d3.select(this.parentNode).datum().key;
-			// 	var text = dates[i].format(DATE_FORMAT_OUTPUT) + ": " + d;
-			// 	label
-			// 		.text(text)
-			// 		.attr('visibility', 'visible')
-			// 		.attr('x', getLayoutX(region) + barXPos(i))
-			// 		.attr('y', getLayoutY(region) + HEIGHT_CHART- barHeight(d)-5)
-			// 	labelBackground
-			// 		.attr('visibility', 'visible')
-			// 		.attr('x', getLayoutX(region) + barXPos(i) - text.length * 7 )
-			// 		.attr('y', getLayoutY(region) + HEIGHT_CHART- barHeight(d)-5 -13)
-			// 		.attr('width', text.length * 7)
-			// })
-			// .on('mouseout',function(d,i){
-			// 	d3.select(this).classed('mouseover', false)
-			// 	labelBackground.attr('visibility', 'hidden')
-			// 	label.attr('visibility', 'hidden')
-			// })	
-
-})
+}
 
 function cleanValue(string){
 	if(string == '*') return 0;

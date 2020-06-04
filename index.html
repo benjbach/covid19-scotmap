@@ -29,6 +29,9 @@
 		.barNewCases{			
 			fill: #f00;
 		}
+		.barNewCasesTotal{
+			fill: #f00;
+		}
 		.mouseover{
 			fill: #f00;
 		}
@@ -57,9 +60,17 @@
 	<div>
 		<h1>Covid 19 cases</h2>
 		<p>Hover over the bars to see dates and values.</p>
+		<div>
+		  <input type="radio" name="input-boardData" value="culmulativeCases">Culmulative Cases</input>
+		  <input type="radio" name="input-boardData" value="newCases">New Cases</input>
+		</div>
 		<svg id="svg-mapvis"></svg>	
 	</div>
+	<div>
+		<h2>All of Scotland</h2>
+		<svg id="svg-total-scotland"></svg>
+	</div>
 	<script  type="text/javascript" src="scotmap.js"></script>
-
+	<script  type="text/javascript" src="total.js"></script>
 </body>
 </html>
