@@ -3,20 +3,93 @@
 <head>
 	<meta charset="UTF-8">
 	<title>RAMP Scotmap</title>
-		<link href="https://fonts.googleapis.com/css?family=Poppins&display=swap" rel="stylesheet">
-
+	<script src="https://d3js.org/d3.v5.min.js"></script>
+	<script src="https://d3js.org/d3-array.v2.min.js"></script>
+	<script src="https://d3js.org/d3-color.v1.min.js"></script>
+	<script src="https://d3js.org/d3-format.v1.min.js"></script>
+	<script src="https://d3js.org/d3-interpolate.v1.min.js"></script>
+	<script src="https://d3js.org/d3-time.v1.min.js"></script>
+	<script src="https://d3js.org/d3-time-format.v2.min.js"></script>
+	<script src="https://d3js.org/d3-scale.v3.min.js"></script>
+	<script src = "https://d3js.org/d3-path.v1.min.js"></script>
+	<script src="https://d3js.org/d3-selection-multi.v1.min.js"></script>
+	<script src="lib/moment.js"></script>
+	<link href="https://fonts.googleapis.com/css?family=Poppins&display=swap" rel="stylesheet">
 	<style>
+		:root {
+ 			--gray1: #999;
+		}
 		body{
 			font-family: 'Poppins', 'Helvetica', sans serif;
 		}
-		iframe{
-			border: 1px solid #ccc
+		.barCulmulativeCases{
+			fill: #000;
+			stroke: none;
 		}
+		.barCulmulativeCases.tickmark{
+			fill: #888;
+		}
+		.barNewCases{			
+			fill: #f00;
+		}
+		.barNewCasesTotal{
+			fill: #f00;
+		}
+		.mouseover{
+			fill: #f00;
+		}
+		.mouseover-linked{
+			fill: #f00;
+		}
+		.chartBackground{
+			fill: #eee;
+		}
+		.chartBoxBackground{
+			/*stroke: black;*/
+			fill: white;
+		}
+		.regionLabel{
+			font-size: 8pt;
+			fill: #55f;
+		}
+		.regionCurrentValue{
+			fill: #f2f;
+			font-size: 8pt;
+			font-weight: 900;
+		}
+		.valueLabel{
+			font-size: 10pt;			
+			text-anchor: end;
+		}
+		.valueLabelBackground{
+			fill: #fff;
+			opacity: 1;
+		}
+		line.tickmark{
+			stroke: var(--gray1);	
+		}
+		text.axisLabel{
+			font-size: 8pt;
+			font-weight: 100;
+			fill: var(--gray1);
+		}
+		text.timeTickmarkLabel{
+			font-size: 8pt;
+			fill: var(--gray1);
+		}
+
 	</style>
 </head>
 <body>
-	<h1>Covid data in Scotland</h1>
-	<iframe src="map.html" frameborder="0" width="500px" height="700px"></iframe>
-	<iframe src="total.html" frameborder="0" width="400px" height="300px"></iframe>
+	<div>
+		<h1>Covid 19 cases</h2>
+		<p>Hover over the bars to see dates and values.</p>
+		<div>
+		  <input type="radio" name="input-boardData" value="culmulativeCases">Cumulative Cases</input>
+		  <input type="radio" name="input-boardData" value="newCases">New Cases</input>
+		</div>
+		<svg id="svg-mapvis"></svg>	
+	</div>
+	<script  type="text/javascript" src="scotmap.js"></script>
 </body>
 </html>
