@@ -22,6 +22,12 @@
 		body{
 			font-family: 'Poppins', 'Helvetica', sans serif;
 		}
+		text{
+			-webkit-user-select: none; /* Safari */        
+			-moz-user-select: none; /* Firefox */
+			-ms-user-select: none; /* IE10+/Edge */
+			user-select: none; /* Standard */
+		}
 		.barCulmulativeCases{
 			fill: #000;
 			stroke: none;
@@ -35,9 +41,6 @@
 		.barNewCasesTotal{
 			fill: #f00;
 		}
-		.mouseover{
-			fill: #f00;
-		}
 		.mouseover-linked{
 			fill: #f00;
 		}
@@ -49,7 +52,7 @@
 		}
 		.regionLabel{
 			font-size: 8pt;
-			fill: #c0c;	
+			fill: #66f;	
 		}
 		.regionCurrentValue{
 			fill: #444;
@@ -75,6 +78,18 @@
 		text.timeTickmarkLabel{
 			font-size: 8pt;
 			fill: var(--gray1);
+		}
+		.valueline{
+			stroke: #888;
+			stroke-width: .5px;
+			fill: none;
+		}
+		.valuePoint{
+			fill: #888;
+			stroke: none;
+		}
+		.mouseover{
+			fill: #f00;
 		}
 
 	</style>

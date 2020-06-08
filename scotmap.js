@@ -45,7 +45,7 @@ const WIDTH_LAYOUT = 3;
 const WIDTH_HEIGHT = 7;
 const GAP_LAYOUT = 40;	
 
-layout = {
+layout_1 = {
 	'NHS Ayrshire & Arran': [5,1],
 	'NHS Borders': [6,3],
 	'NHS Dumfries & Galloway': [6,1],
@@ -61,14 +61,30 @@ layout = {
 	'NHS Tayside': [3,1],
 	'NHS Western Isles': [2,0]
 }
+layout_2 = {
+	'NHS Ayrshire & Arran': [3,0],
+	'NHS Borders': [4,2],
+	'NHS Dumfries & Galloway': [4,0],
+	'NHS Fife': [2,1],
+	'NHS Forth Valley': [2,0],
+	'NHS Grampian': [1,2],
+	'NHS Greater Glasgow & Clyde': [3,1],
+	'NHS Highland': [1,0],
+	'NHS Lanarkshire': [4,1],
+	'NHS Lothian': [3,2],
+	'NHS Orkney': [0,1],
+	'NHS Shetland': [0,2],
+	'NHS Tayside': [1,1],
+	'NHS Western Isles': [0,0]
+}
 
 const TICKMARK_GAP_Y = 10
 
 function getLayoutX(regionName){
-	return layout[cleanRegionName(regionName)][1] * (WIDTH_CHART_BOX + GAP_LAYOUT);
+	return layout_2[cleanRegionName(regionName)][1] * (WIDTH_CHART_BOX + GAP_LAYOUT);
 }
 function getLayoutY(regionName){
-	return layout[cleanRegionName(regionName)][0] * (HEIGHT_CHART_BOX + GAP_LAYOUT);
+	return layout_2[cleanRegionName(regionName)][0] * (HEIGHT_CHART_BOX + GAP_LAYOUT);
 }
 function cleanRegionName(regionName){
 	var s = regionNames[regionName]
@@ -86,15 +102,23 @@ buttons.on('change', function(d) {
 	changeData(this.value)
 });
 
+
+const CHART_BAR = 0
+const CHART_LINE = 1
+var currentData
+var chartType;
 function changeData(value){
-	console.log('new data: '+ value);
 
 	if(value === 'culmulativeCases'){
-		setData(cumulativeCasesByBoard)
+		currentData = cumulativeCasesByBoard;
+		chartType = CHART_LINE;
 	}
 	else if(value === 'newCases'){
-		setData(dailyCasesByBoard)		
+		currentData = dailyCasesByBoard 
+		chartType = CHART_BAR;
 	}
+	setData(currentData)		
+
 }
 d3.json('http://vis.scrc.uk/api/v1/scotland/cumulative').then(function(data) 
 { 
@@ -155,21 +179,22 @@ d3.json('http://vis.scrc.uk/api/v1/scotland/cumulative').then(function(data)
 
 
 	console.log("Dates =", dates)
+	console.log('regions', regions)
 	console.log("Total cases =", totals)
 	console.log("culmulative by board =", cumulativeCasesByBoard)
 	console.log("daily By board =", cumulativeCasesByBoard)
 	console.log("---> data parsed")
 
-
-
 	initCharts();
-	setData(cumulativeCasesByBoard)
 
+	changeData('culmulativeCases')
+	// changeData('newCases')
 })
 
 
 var chart, chartBox
-var bar
+var bar, line
+var valuePoint
 var barHeight = d3.scaleLinear()
 	.range([0, HEIGHT_CHART]);
 var barXPos = d3.scaleLinear()
@@ -181,7 +206,6 @@ var svg;
 var labelBackground
 var label
 
-
 function initCharts(){
 
 	// Create bar chart for each region
@@ -190,11 +214,11 @@ function initCharts(){
 	    .attr("height", HEIGHT_SVG);
 
 	chartBox = svg.selectAll('g')
-	  	.data(d3.entries(cumulativeCasesByBoard))
+	  	.data(regions)
 	  	.enter().append('g')
 	  		.attr('class', 'chartBox')
 	    	.attr("transform", function(d, i) { 
-	    		return "translate("+getLayoutX(d.key)+"," + getLayoutY(d.key) + ")"; 
+	    		return "translate("+getLayoutX(d)+"," + getLayoutY(d) + ")"; 
 	    	})
 	    	.attr('height', HEIGHT_CHART_BOX)
 	    	.attr('width', WIDTH_CHART_BOX)
@@ -225,20 +249,15 @@ function initCharts(){
 		.attr('x', 0)
 		.attr('y', 10)
 		.text(function(d,i){
-			return cleanRegionName(d.key);
+			return cleanRegionName(d);
 		})
 		.call(wrap, WIDTH_CHART);
 
-	chartBox.append('text')
+	chart.append('text')
 		.attr('class', 'regionCurrentValue')
 		.attr('x', WIDTH_CHART_BOX)
-		.attr('y', 10)
+		.attr('y', -5)
 		.style('text-anchor', 'end')
-		.text(function(d,i){
-			return Math.max(...d.value);
-		})
-
-
 
 	// Tooltip on mouse over	    	
 	labelBackground = svg.append('rect')
@@ -250,40 +269,60 @@ function initCharts(){
 		.attr('class', 'valueLabel')
 
 
-	bar = chart.selectAll('bar')
-		.data(function(d){
-			return d.value;
-		})
-		.enter().append('rect')
-			.attr('class','bar')
-			.classed('tickmark', function(d,i){
-				return dates[i].date() == 1;
-			})
-			.on('mouseover',function(d,i){
-				d3.selectAll('.bar').classed('mouseover', false)
-				bar.classed('mouseover', function(d,j){
-						return i == j;
-					})
-				var region = d3.select(this.parentNode).datum().key;
-				var text = dates[i].format(DATE_FORMAT_OUTPUT) + ": " + d;
-				label
-					.text(text)
-					.attr('visibility', 'visible')
-					.attr('x', getLayoutX(region) + barXPos(i))
-					.attr('y', getLayoutY(region) + HEIGHT_CHART - barHeight(d) + 13)
-				labelBackground
-					.attr('visibility', 'visible')
-					.attr('x', getLayoutX(region) + barXPos(i) - text.length * 7 )
-					.attr('y', getLayoutY(region) + HEIGHT_CHART- barHeight(d))
-					.attr('width', text.length * 7)
-			})
-			.on('mouseout',function(d,i){
-				d3.select(this).classed('mouseover', false)
-				labelBackground.attr('visibility', 'hidden')
-				label.attr('visibility', 'hidden')
-			})
-
 	chart.each(createXLabels, this)
+}
+
+function mouseOverBar(d,i){
+
+	d3.selectAll('.bar').classed('mouseover', false)
+	bar.classed('mouseover', function(d,j){
+			return i == j;
+		})
+	var region = d3.select(this.parentNode).datum().key;
+	var text = dates[i].format(DATE_FORMAT_OUTPUT) + ": " + d;
+	
+	label
+		.text(text)
+		.attr('visibility', 'visible')
+		.attr('x', getLayoutX(region) + barXPos(i))
+		.attr('y', getLayoutY(region) + HEIGHT_CHART - barHeight(d) + 13)
+	labelBackground
+		.attr('visibility', 'visible')
+		.attr('x', getLayoutX(region) + barXPos(i) - text.length * 7 )
+		.attr('y', getLayoutY(region) + HEIGHT_CHART- barHeight(d))
+		.attr('width', text.length * 7)
+}
+function mouseOverPath(d,i){
+
+	valuePoint
+		.classed('mouseover', function(d,j){
+			// console.log(j, i)
+			return i == j;
+		})
+		.attr('r', function(d,j){
+			if(i == j)
+				return xStep
+			return xStep / 2
+		})
+	var region = d3.select(this.parentNode).datum().key;
+	var text = dates[i].format(DATE_FORMAT_OUTPUT) + ": " + d;
+	
+	label
+		.text(text)
+		.attr('visibility', 'visible')
+		.attr('x', getLayoutX(region) + barXPos(i))
+		.attr('y', getLayoutY(region) + HEIGHT_CHART - barHeight(d) + 10)
+	labelBackground
+		.attr('visibility', 'visible')
+		.attr('x', getLayoutX(region) + barXPos(i) - text.length * 7)
+		.attr('y', getLayoutY(region) + HEIGHT_CHART- barHeight(d) - 3)
+		.attr('width', text.length * 7)
+}
+
+function mouseOut(d,i){
+	d3.select(this).classed('mouseover', false)
+	labelBackground.attr('visibility', 'hidden')
+	label.attr('visibility', 'hidden')
 }
 
 
@@ -373,14 +412,16 @@ function createYLabels(d){
 function setData(values){
 	
 	// set new data for every chart and every bar
+	console.log('SET DATA', values)
+	// chartBox.data(d3.entries(values))
 	chart.data(d3.entries(values))
+
 	var max = 0
 	for (var key in values) {
 		for (var j = 0; j < values[key].length; j++) {
 			max = Math.max(max, values[key][j])
 		}
 	}
-	console.log(max)
 
 	var decimals = max.toString().length;
 	var offset = Math.pow(10, decimals-1)
@@ -389,33 +430,116 @@ function setData(values){
 	v = Math.trunc(v);
 	chartMax = v * offset
 
-
 	barHeight.domain([0, chartMax])
 	barXPos.domain([0, dates.length])
 
-	xStep = WIDTH_CHART / dates.length;
-	
-	// draw bars
-	bar.data(function(d){
-			return d.value;
-		})
-			.attr('class','bar')
-			.classed('tickmark', function(d,i){
-				return dates[i].date() == 1;
-			})
-			.attr('x', function(d,i){
-				return barXPos(i);
-			})
-			.attr('height',function(d,i){
-				return barHeight(d);
-			})
-			.attr('width', xStep)
-			.attr('y', function(d,i){
-				return HEIGHT_CHART - barHeight(d);
-			})
+	xStep = WIDTH_CHART / dates.length
 
-		// CHART LABELS
+	// draw bars
+	if(chartType == CHART_BAR){
+		
+		// create bar chart version
+		bar = chart.selectAll('.bar')
+			.data(function(d){
+				console.log('d on bars', d.value)
+				return d.value;
+			})
+			.enter().append('rect')
+				.attr('class','bar')
+				.classed('tickmark', function(d,i){
+					return dates[i].date() == 1;
+				})
+				.on('mouseover', mouseOverBar)
+				.on('mouseout', mouseOut)
+				.attr('class','bar')
+				.classed('tickmark', function(d,i){
+					return dates[i].date() == 1;
+				})
+				.attr('x', function(d,i){
+					return barXPos(i);
+				})
+				.attr('height',function(d,i){
+					return barHeight(d);
+				})
+				.attr('width', xStep)
+				.attr('y', function(d,i){
+					return HEIGHT_CHART - barHeight(d);
+				})
+	}
+	chart.selectAll('.bar').style('visibility', function(){
+		if(chartType == CHART_BAR)
+			return 'visible'
+		return 'hidden'
+	})
+
+	// create line chart version
+	if(chartType == CHART_LINE)
+	{
+		valuePoint = chart.selectAll('.valuePoint')
+			.data(function(d){
+				return d.value;
+			})
+			.enter().append('circle')
+				.attr('class','valuePoint')
+				.classed('tickmark', function(d,i){
+					return dates[i].date() == 1;
+				})
+				.on('mouseover', mouseOverPath)
+				.on('mouseout', mouseOut)
+				.attr('class','valuePoint')
+				.attr('cx', function(d,i){
+					return barXPos(i);
+				})
+				.attr('r', xStep/2)
+				.attr('cy', function(d,i){
+					return HEIGHT_CHART - barHeight(d);
+				})
+
+			var valueline = d3.line()
+			    .x(function(d,i) {  return barXPos(i); })
+			    .y(function(d,i) {  return HEIGHT_CHART - barHeight(d); });
+
+		chart.selectAll('.valueline')
+			.remove()
+		
+		// line = chart.append('path')
+		// 	.datum(function(d){
+		// 		return d.value;})	
+	 //        .attr("d", valueline)
+	 //        .attr('class', 'valueline')
+			
+	}
+	// chart.selectAll('.valueline')
+	// 	.style('visibility', function(){
+	// 		if(chartType == CHART_LINE)
+	// 			return 'visible'
+	// 		return 'hidden'
+	// 	})
+
+	chart.selectAll('.valuePoint')
+		.style('visibility', function(){
+			if(chartType == CHART_LINE)
+				return 'visible'
+			return 'hidden'
+		})
+
+
+	// CHART LABELS
 	chart.each(createYLabels, this)
+
+	// console.log(chart.selectAll('text.regionCurrentValue'))
+	chart.select('.regionCurrentValue')
+		.text(function(d,i){
+			console.log('d', )
+			return 'latest: ' + d.value[d.value.length-1];
+		})
+		.style('fill', function(d,i){
+			if(d.value[d.value.length-1] == 0)
+				return '#0b0';
+			else{
+				return '#888';				
+			}
+		})
 }
 
 function cleanValue(string){
