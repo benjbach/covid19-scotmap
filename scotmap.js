@@ -1,5 +1,9 @@
+const TABLE = 'cumulative';
+// const TABLE = 'icupatients';
+// const TABLE = 'hospconfirmed';
+// const TABLE = 'hospsuspected';
 
-const FILE = 'Table 1 - Cumulative cases-Table 1';
+
 const DATE_FORMAT_INPUT = 'DD/MM/YYYY'
 const DATE_FORMAT_OUTPUT = 'DD-MMM-YYYY'
 // TABLE COLS
@@ -7,7 +11,21 @@ var DATE = 0
 var TOTAL = 15
 
 // REGIONS
-var regions = []
+var regions = ['nhs_ayrshire_arran',
+	'nhs_borders',
+	'nhs_dumfries_galloway',
+	'nhs_fife',
+	'nhs_forth_valley',
+	'nhs_grampian',
+	'nhs_greater_glasgow_clyde',
+	'nhs_highland',
+	'nhs_lanarkshire',
+	'nhs_lothian',
+	'nhs_orkney',
+	'nhs_shetland',
+	'nhs_tayside',
+	'nhs_western_isles_scotland']
+
 var regionNames = {
 	'nhs_ayrshire_arran': "NHS Ayrshire & Arran",
 	'nhs_borders': "NHS Borders",
@@ -23,6 +41,23 @@ var regionNames = {
 	'nhs_shetland': "NHS Shetland",
 	'nhs_tayside': "NHS Tayside",
 	'nhs_western_isles_scotland': "NHS Western Isles"
+}
+
+populationPerRegion = {
+	'nhs_ayrshire_arran': 369360,
+	'nhs_borders': 115510,
+	'nhs_dumfries_galloway': 148860,
+	'nhs_fife': 373550,
+	'nhs_forth_valley': 306640,
+	'nhs_grampian': 585700,
+	'nhs_greater_glasgow_clyde': 1183120,
+	'nhs_highland': 321700,
+	'nhs_lanarkshire': 661900,
+	'nhs_lothian': 907580,
+	'nhs_orkney': 22270,
+	'nhs_shetland': 22920,
+	'nhs_tayside': 417470,
+	'nhs_western_isles_scotland': 26720
 }
 
 var dates = [];
@@ -81,7 +116,7 @@ layout_2 = {
 const TICKMARK_GAP_Y = 10
 
 function getLayoutX(regionName){
-	return layout_2[cleanRegionName(regionName)][1] * (WIDTH_CHART_BOX + GAP_LAYOUT);
+	return layout_2[cleanRegionName(regionName)][1] * (WIDTH_CHART_BOX + GAP_LAYOUT) + GAP_LAYOUT;
 }
 function getLayoutY(regionName){
 	return layout_2[cleanRegionName(regionName)][0] * (HEIGHT_CHART_BOX + GAP_LAYOUT);
@@ -94,8 +129,11 @@ function cleanRegionName(regionName){
 var totalMax = 0
 var regionMax = 0
 var chartMax =0;
+
+// DATA
 var cumulativeCasesByBoard = {}
 var dailyCasesByBoard = {}
+var cumulativeCasesByBoardPerCapita = {}
 
 const buttons = d3.selectAll('input[name="input-boardData"]');
 buttons.on('change', function(d) {
@@ -109,6 +147,8 @@ var currentData
 var chartType;
 function changeData(value){
 
+	d3.select('#title').html(TABLE + ' per NHS Board')
+
 	if(value === 'culmulativeCases'){
 		currentData = cumulativeCasesByBoard;
 		chartType = CHART_LINE;
@@ -116,20 +156,27 @@ function changeData(value){
 	else if(value === 'newCases'){
 		currentData = dailyCasesByBoard 
 		chartType = CHART_BAR;
+	}else if(value === 'cumulativePerCapita'){
+		currentData = cumulativeCasesByBoardPerCapita 
+		chartType = CHART_LINE;
 	}
-	setData(currentData)		
 
+	setData(currentData)		
 }
-d3.json('http://vis.scrc.uk/api/v1/scotland/cumulative').then(function(data) 
+
+d3.json('http://vis.scrc.uk/api/v1/scotland/' + TABLE).then(function(data) 
 { 
 
 	// get regions
 	var firstRow = data[0];
 	for (var key in firstRow){
 		if(key != 'date' && key != 'scotland'){
-			regions.push(key)
+			if(regions.indexOf(key) == -1)
+				continue; 
+
 			cumulativeCasesByBoard[key] = []
 			dailyCasesByBoard[key] = [];
+			cumulativeCasesByBoardPerCapita[key] = []
 		}
 	}
 
@@ -150,10 +197,18 @@ d3.json('http://vis.scrc.uk/api/v1/scotland/cumulative').then(function(data)
 			}
 			else
 			{// some nhs board..
+				if(regions.indexOf(key) == -1)
+					continue; 
+
 				var val = cleanValue(row[key])
 			
 				// culmulative cases
 				cumulativeCasesByBoard[key].push(val)
+				var perCapita = val / populationPerRegion[key]
+				// console.log(' populationPerRegion[key]',  perCapita)
+				perCapita = perCapita.toFixed(5)
+				cumulativeCasesByBoardPerCapita[key].push(perCapita)
+
 				regionMax = Math.max(regionMax, val)
 
 				// daily cases
@@ -168,16 +223,6 @@ d3.json('http://vis.scrc.uk/api/v1/scotland/cumulative').then(function(data)
 		prevRow = row;
 	}
 
-	// 	
-	var decimals = regionMax.toString().length;
-	var offset = Math.pow(10, decimals-1) 
-	var v = regionMax + offset;
-	v = v / offset
-	v = Math.trunc(v);
-	chartMax = v * offset
-	console.log('chartMax', chartMax)
-
-
 	console.log("Dates =", dates)
 	console.log('regions', regions)
 	console.log("Total cases =", totals)
@@ -188,7 +233,6 @@ d3.json('http://vis.scrc.uk/api/v1/scotland/cumulative').then(function(data)
 	initCharts();
 
 	changeData('culmulativeCases')
-	// changeData('newCases')
 })
 
 
@@ -197,6 +241,8 @@ var bar, line
 var valuePoint
 var barHeight = d3.scaleLinear()
 	.range([0, HEIGHT_CHART]);
+var barOpacity = d3.scaleLinear()
+	.range([.3, 1]);
 var barXPos = d3.scaleLinear()
 	.range([0, WIDTH_CHART]);
 
@@ -205,6 +251,10 @@ var svg;
 
 var labelBackground
 var label
+
+
+var valueColorScale = d3.scaleSequential(['green', 'red'])
+	// .interpolator(d3.interpolateRdYlGe);
 
 function initCharts(){
 
@@ -296,7 +346,6 @@ function mouseOverPath(d,i){
 
 	valuePoint
 		.classed('mouseover', function(d,j){
-			// console.log(j, i)
 			return i == j;
 		})
 		.attr('r', function(d,j){
@@ -417,21 +466,33 @@ function setData(values){
 	chart.data(d3.entries(values))
 
 	var max = 0
-	for (var key in values) {
-		for (var j = 0; j < values[key].length; j++) {
-			max = Math.max(max, values[key][j])
+	for (var r in regions) {
+		for (var j = 0; j < values[regions[r]].length; j++) {
+			max = Math.max(max, values[regions[r]][j])
 		}
 	}
+	console.log('max', max)
+	if(max > 1){
+		var decimals = max.toString().length;
+		var offset = Math.pow(10, decimals-1)
+		var v =max + offset;
+		v = v / offset
+		v = Math.trunc(v);
+		chartMax = v * offset
+	}else{
+		var decimals = -Math.floor( Math.log(max) / Math.log(10) + 1);
+		max *= Math.pow(10, decimals+1)
+		var v = max + .5;
+		v = Math.trunc(v);
+		chartMax = v / Math.pow(10, decimals+1)	
+	}
 
-	var decimals = max.toString().length;
-	var offset = Math.pow(10, decimals-1)
-	var v =max + offset;
-	v = v / offset
-	v = Math.trunc(v);
-	chartMax = v * offset
 
 	barHeight.domain([0, chartMax])
+	barOpacity.domain([0, chartMax])
 	barXPos.domain([0, dates.length])
+	valueColorScale.domain([0,chartMax])
+
 
 	xStep = WIDTH_CHART / dates.length
 
@@ -465,6 +526,9 @@ function setData(values){
 				.attr('y', function(d,i){
 					return HEIGHT_CHART - barHeight(d);
 				})
+				.style('opacity', function(d,i){
+					return barOpacity(d);
+				})
 	}
 	chart.selectAll('.bar').style('visibility', function(){
 		if(chartType == CHART_BAR)
@@ -476,14 +540,14 @@ function setData(values){
 	if(chartType == CHART_LINE)
 	{
 		valuePoint = chart.selectAll('.valuePoint')
+			.remove();
+		
+		valuePoint = chart.selectAll('.valuePoint')
 			.data(function(d){
 				return d.value;
 			})
 			.enter().append('circle')
 				.attr('class','valuePoint')
-				.classed('tickmark', function(d,i){
-					return dates[i].date() == 1;
-				})
 				.on('mouseover', mouseOverPath)
 				.on('mouseout', mouseOut)
 				.attr('class','valuePoint')
@@ -494,27 +558,31 @@ function setData(values){
 				.attr('cy', function(d,i){
 					return HEIGHT_CHART - barHeight(d);
 				})
+				.style('fill', function(d,i){
+					return valueColorScale(d);
+				})
+				// .classed('zerovalue', true)
 
-			var valueline = d3.line()
-			    .x(function(d,i) {  return barXPos(i); })
-			    .y(function(d,i) {  return HEIGHT_CHART - barHeight(d); });
+		var valueline = d3.line()
+		    .x(function(d,i) {  return barXPos(i); })
+		    .y(function(d,i) {  return HEIGHT_CHART - barHeight(d); });
 
 		chart.selectAll('.valueline')
 			.remove()
 		
-		// line = chart.append('path')
-		// 	.datum(function(d){
-		// 		return d.value;})	
-	 //        .attr("d", valueline)
-	 //        .attr('class', 'valueline')
+		line = chart.append('path')
+			.datum(function(d){
+				return d.value;})	
+	        .attr("d", valueline)
+	        .attr('class', 'valueline')
 			
 	}
-	// chart.selectAll('.valueline')
-	// 	.style('visibility', function(){
-	// 		if(chartType == CHART_LINE)
-	// 			return 'visible'
-	// 		return 'hidden'
-	// 	})
+	chart.selectAll('.valueline')
+		.style('visibility', function(){
+			if(chartType == CHART_LINE)
+				return 'visible'
+			return 'hidden'
+		})
 
 	chart.selectAll('.valuePoint')
 		.style('visibility', function(){
@@ -530,20 +598,16 @@ function setData(values){
 	// console.log(chart.selectAll('text.regionCurrentValue'))
 	chart.select('.regionCurrentValue')
 		.text(function(d,i){
-			console.log('d', )
 			return 'latest: ' + d.value[d.value.length-1];
 		})
-		.style('fill', function(d,i){
-			if(d.value[d.value.length-1] == 0)
-				return '#0b0';
-			else{
-				return '#888';				
-			}
+		.classed('zerovalue', function(d,i){
+			return d.value[d.value.length-1] == 0
 		})
 }
 
 function cleanValue(string){
 	if(string == '*') return 0;
+	if(string == 'N/A') return 0;
 	else{
 		return parseInt(string.replace(',',''));
 	}

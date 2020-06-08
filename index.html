@@ -18,6 +18,7 @@
 	<style>
 		:root {
  			--gray1: #999;
+ 			--green1: #66f;
 		}
 		body{
 			font-family: 'Poppins', 'Helvetica', sans serif;
@@ -52,7 +53,7 @@
 		}
 		.regionLabel{
 			font-size: 8pt;
-			fill: #66f;	
+			fill: #66f
 		}
 		.regionCurrentValue{
 			fill: #444;
@@ -91,16 +92,21 @@
 		.mouseover{
 			fill: #f00;
 		}
+		.zerovalue{
+			fill: #0b0;
+		}
 
 	</style>
 </head>
 <body>
 	<div>
-		<h1>Covid 19 cases</h2>
+		<h1 id="title"></h2>
 		<p>Hover over the bars to see dates and values.</p>
 		<div>
-		  <input type="radio" name="input-boardData" value="culmulativeCases">Cumulative Cases</input>
-		  <input type="radio" name="input-boardData" value="newCases">New Cases</input>
+		  <input type="radio" name="input-boardData" value="culmulativeCases" checked="checked">Cumulative</input>
+		  <input type="radio" name="input-boardData" value="newCases">Per day</input>
+		  <input type="radio" name="input-boardData" value="cumulativePerCapita">Cumulative
+		per capita</input>
 		</div>
 		<svg id="svg-mapvis"></svg>	
 	</div>
